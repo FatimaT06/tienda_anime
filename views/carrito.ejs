@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrito de Compras - Tienda Anime</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="container">
+    <h1 class="page-title">Carrito de Compras</h1>
+    
+    <% if (items.length === 0) { %>
+      <div class="carrito-vacio">
+        <p>Tu carrito está vacío</p>
+        <a href="/" class="btn btn-primary">Ver productos</a>
+      </div>
+    <% } else { %>
+      <div class="carrito-contenido">
+        <div class="carrito-items">
+          <% items.forEach(item => { %>
+            <div class="carrito-item" data-producto-id="<%= item.id %>">
+              <img src="<%= item.imagen %>" alt="<%= item.nombre %>" class="carrito-item-imagen" onerror="this.src='https://via.placeholder.com/100?text=Imagen'">
+              <div class="carrito-item-info">
+                <h3><%= item.nombre %></h3>
+                <p class="carrito-item-serie"><%= item.serie_anime %></p>
+                <p class="carrito-item-precio">$<%= parseFloat(item.precio).toFixed(2) %> MXN</p>
+              </div>
+              <div class="carrito-item-cantidad">
+                <button onclick="actualizarCantidad(<%= item.id %>, <%= item.cantidad - 1 %>)" class="btn-cantidad">-</button>
+                <input type="number" value="<%= item.cantidad %>" min="1" max="<%= item.stock %>" 
+                       onchange="actualizarCantidad(<%= item.id %>, this.value)" class="cantidad-input">
+                <button onclick="actualizarCantidad(<%= item.id %>, <%= item.cantidad + 1 %>)" class="btn-cantidad">+</button>
+              </div>
+              <div class="carrito-item-subtotal">
+                <p>$<%= parseFloat(item.subtotal).toFixed(2) %></p>
+              </div>
+              <button onclick="eliminarDelCarrito(<%= item.id %>)" class="btn-eliminar">🗑️</button>
+            </div>
+          <% }); %>
+        </div>
+        
+        <div class="carrito-resumen">
+          <h2>Resumen de Compra</h2>
+          <div class="resumen-linea">
+            <span>Subtotal:</span>
+            <span id="subtotal">$<%= parseFloat(total).toFixed(2) %></span>
+          </div>
+          <div class="resumen-linea">
+            <span>Envío:</span>
+            <span>Gratis</span>
+          </div>
+          <div class="resumen-linea resumen-total">
+            <span>Total:</span>
+            <span id="total">$<%= parseFloat(total).toFixed(2) %></span>
+          </div>
+          
+          <% if (!usuario) { %>
+            <p class="carrito-aviso">Debes <a href="/login">iniciar sesión</a> para realizar la compra</p>
+          <% } %>
+          
+          <button onclick="realizarCompra()" class="btn btn-comprar" <%= !usuario ? 'disabled' : '' %>>
+            Realizar Compra
+          </button>
+        </div>
+      </div>
+    <% } %>
+  </main>
+  
+  <div id="notificacion" class="notificacion"></div>
+  
+  <script src="/js/carrito.js"></script>
+</body>
+</html>

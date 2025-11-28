@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial de Compras - Tienda Anime</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="container">
+    <h1 class="page-title">Mis Compras</h1>
+    
+    <% if (pedidos.length === 0) { %>
+      <div class="historial-vacio">
+        <p>Aún no has realizado ninguna compra</p>
+        <a href="/" class="btn btn-primary">Ver productos</a>
+      </div>
+    <% } else { %>
+      <div class="historial-lista">
+        <% pedidos.forEach(pedido => { %>
+          <div class="pedido-card">
+            <div class="pedido-header">
+              <div>
+                <h3>Pedido #<%= pedido.id %></h3>
+                <p class="pedido-fecha"><%= new Date(pedido.fecha).toLocaleString('es-MX') %></p>
+              </div>
+              <div class="pedido-total">
+                <span class="total-label">Total:</span>
+                <span class="total-precio">$<%= parseFloat(pedido.total).toFixed(2) %> MXN</span>
+              </div>
+            </div>
+            
+            <div class="pedido-productos">
+              <p><strong>Productos:</strong></p>
+              <p><%= pedido.productos %></p>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </main>
+</body>
+</html>

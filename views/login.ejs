@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión - Tienda Anime</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="container">
+    <div class="form-container">
+      <h1>Iniciar Sesión</h1>
+      
+      <% if (typeof mensaje !== 'undefined' && mensaje) { %>
+        <div class="alert alert-success"><%= mensaje %></div>
+      <% } %>
+      
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+      
+      <form action="/login" method="POST" class="auth-form">
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Contraseña:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+      </form>
+      
+      <p class="form-footer">
+        ¿No tienes cuenta? <a href="/registro">Regístrate aquí</a>
+      </p>
+    </div>
+  </main>
+</body>
+</html>
