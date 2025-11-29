@@ -9,6 +9,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('Servidor corriendo en', PORT));
 
 // Configuración de la base de datos para Railway
 const dbConfig = {
@@ -34,13 +35,12 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Configuración de sesiones
 app.use(session({
-  key: 'session_cookie',
-  secret: process.env.SESSION_SECRET,
-  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'dev-temp-secret-change-this',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 // 24 horas
+    secure: false, // en producción con HTTPS pon true
+    maxAge: 1000 * 60 * 60 * 24 // 1 día, opcional
   }
 }));
 
@@ -314,12 +314,12 @@ app.get('/historial', async (req, res) => {
     const [pedidos] = await pool.query(
       `SELECT p.*, 
         (SELECT GROUP_CONCAT(CONCAT(pr.nombre, ' (x', dp.cantidad, ')') SEPARATOR ', ')
-         FROM detalles_pedido dp
-         JOIN productos pr ON dp.producto_id = pr.id
-         WHERE dp.pedido_id = p.id) as productos
-       FROM pedidos p
-       WHERE p.usuario_id = ?
-       ORDER BY p.fecha DESC`,
+        FROM detalles_pedido dp
+        JOIN productos pr ON dp.producto_id = pr.id
+        WHERE dp.pedido_id = p.id) as productos
+      FROM pedidos p
+      WHERE p.usuario_id = ?
+      ORDER BY p.fecha DESC`,
       [req.session.usuario.id]
     );
     
