@@ -9,6 +9,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('Servidor corriendo en', PORT));
 
 // Configuración de la base de datos para Railway
 const dbConfig = {
@@ -34,13 +35,12 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Configuración de sesiones
 app.use(session({
-  key: 'session_cookie',
-  secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
-  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'dev-temp-secret-change-this',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 // 24 horas
+    secure: false, // en producción con HTTPS pon true
+    maxAge: 1000 * 60 * 60 * 24 // 1 día, opcional
   }
 }));
 
@@ -314,12 +314,12 @@ app.get('/historial', async (req, res) => {
     const [pedidos] = await pool.query(
       `SELECT p.*, 
         (SELECT GROUP_CONCAT(CONCAT(pr.nombre, ' (x', dp.cantidad, ')') SEPARATOR ', ')
-         FROM detalles_pedido dp
-         JOIN productos pr ON dp.producto_id = pr.id
-         WHERE dp.pedido_id = p.id) as productos
-       FROM pedidos p
-       WHERE p.usuario_id = ?
-       ORDER BY p.fecha DESC`,
+        FROM detalles_pedido dp
+        JOIN productos pr ON dp.producto_id = pr.id
+        WHERE dp.pedido_id = p.id) as productos
+      FROM pedidos p
+      WHERE p.usuario_id = ?
+      ORDER BY p.fecha DESC`,
       [req.session.usuario.id]
     );
     
@@ -363,9 +363,11 @@ app.get('/ticket/:pedido_id', async (req, res) => {
     // Crear PDF
     const doc = new PDFDocument({ margin: 50 });
     
+    // Configurar headers para descarga
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=ticket-${pedido_id}.pdf`);
     
+    // Pipe el PDF directamente a la respuesta
     doc.pipe(res);
     
     // Encabezado
@@ -389,12 +391,15 @@ app.get('/ticket/:pedido_id', async (req, res) => {
     doc.moveDown(0.5);
     
     detalles.forEach((detalle, index) => {
+      const precio = parseFloat(detalle.precio);
+      const subtotal = detalle.cantidad * precio;
+      
       doc.fontSize(11).text(
         `${index + 1}. ${detalle.nombre}`,
         { continued: false }
       );
       doc.fontSize(10).text(
-        `   Cantidad: ${detalle.cantidad} x $${detalle.precio.toFixed(2)} = $${(detalle.cantidad * detalle.precio).toFixed(2)}`,
+        `   Cantidad: ${detalle.cantidad} x ${precio.toFixed(2)} = ${subtotal.toFixed(2)}`,
         { indent: 20 }
       );
       doc.moveDown(0.5);
@@ -407,107 +412,9 @@ app.get('/ticket/:pedido_id', async (req, res) => {
     doc.moveDown();
     
     // Total
-    doc.fontSize(14).text(`TOTAL: $${pedido.total.toFixed(2)}`, { align: 'right', bold: true });
-    doc.moveDown();
-    
-    // Pie de página
-    doc.fontSize(10).text('¡Gracias por tu compra!', { align: 'center' });
-    doc.text('Tienda Anime - Tu tienda de coleccionables favorita', { align: 'center' });
-    
-    doc.end();
-  } catch (error) {
-    console.error('Error al generar ticket:', error);
-    res.status(500).send('Error al generar el ticket');
-  }
-});
-
-// Descargar ticket como PDF
-app.get('/ticket/:pedido_id/pdf', async (req, res) => {
-  if (!req.session.usuario) {
-    return res.redirect('/login');
-  }
-  
-  const pedido_id = req.params.pedido_id;
-  
-  try {
-    // Obtener datos del pedido
-    const [pedidos] = await pool.query(
-      'SELECT * FROM pedidos WHERE id = ? AND usuario_id = ?',
-      [pedido_id, req.session.usuario.id]
-    );
-    
-    if (pedidos.length === 0) {
-      return res.status(404).send('Pedido no encontrado');
-    }
-    
-    const pedido = pedidos[0];
-    
-    // Obtener detalles del pedido
-    const [detalles] = await pool.query(
-      `SELECT dp.*, p.nombre, p.descripcion
-       FROM detalles_pedido dp
-       JOIN productos p ON dp.producto_id = p.id
-       WHERE dp.pedido_id = ?`,
-      [pedido_id]
-    );
-    
-    // Crear PDF
-    const doc = new PDFDocument({ margin: 50 });
-    
-    // Configurar headers para descarga
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=ticket-${pedido_id}.pdf`);
-    
-    // Pipe el PDF directamente a la respuesta
-    doc.pipe(res);
-    
-    // Encabezado
-    doc.fontSize(24).text('TIENDA ANIME', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(18).text('Ticket de Compra', { align: 'center' });
-    doc.moveDown(1.5);
-    
-    // Información del pedido
-    doc.fontSize(12).text(`Pedido #${pedido.id}`);
-    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}`);
-    doc.text(`Cliente: ${req.session.usuario.nombre}`);
-    doc.text(`Email: ${req.session.usuario.email}`);
-    doc.moveDown(1.5);
-    
-    // Línea separadora
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown();
-    
-    // Detalles de productos
-    doc.fontSize(14).text('Productos:', { underline: true });
-    doc.moveDown(0.5);
-    
-    detalles.forEach((detalle, index) => {
-      const precio = parseFloat(detalle.precio);
-      const cantidad = parseInt(detalle.cantidad);
-      const subtotal = precio * cantidad;
-      
-      doc.fontSize(11).text(`${index + 1}. ${detalle.nombre}`);
-      doc.fontSize(10).text(`   Cantidad: ${cantidad} x $${precio.toFixed(2)} = $${subtotal.toFixed(2)} MXN`);
-      doc.moveDown(0.5);
-    });
-    
-    doc.moveDown();
-    
-    // Línea separadora
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown();
-    
-    // Total
     const total = parseFloat(pedido.total);
-    doc.fontSize(16).text(`TOTAL: $${total.toFixed(2)} MXN`, { align: 'right' });
-    doc.moveDown(2);
+    doc.fontSize(14).text(`TOTAL: ${total.toFixed(2)}`, { align: 'right', bold: true });
+    doc.moveDown();
     
     // Pie de página
     doc.fontSize(10).text('¡Gracias por tu compra!', { align: 'center' });
@@ -516,14 +423,9 @@ app.get('/ticket/:pedido_id/pdf', async (req, res) => {
     // Finalizar el PDF
     doc.end();
   } catch (error) {
-    console.error('Error al generar PDF:', error);
-    res.status(500).send('Error al generar el ticket PDF');
+    console.error('Error al generar ticket:', error);
+    res.status(500).send('Error al generar el ticket');
   }
-});
-
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
 
 // Iniciar servidor
