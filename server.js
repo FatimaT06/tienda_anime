@@ -421,6 +421,106 @@ app.get('/ticket/:pedido_id', async (req, res) => {
   }
 });
 
+// Descargar ticket como PDF
+app.get('/ticket/:pedido_id/pdf', async (req, res) => {
+  if (!req.session.usuario) {
+    return res.redirect('/login');
+  }
+  
+  const pedido_id = req.params.pedido_id;
+  
+  try {
+    // Obtener datos del pedido
+    const [pedidos] = await pool.query(
+      'SELECT * FROM pedidos WHERE id = ? AND usuario_id = ?',
+      [pedido_id, req.session.usuario.id]
+    );
+    
+    if (pedidos.length === 0) {
+      return res.status(404).send('Pedido no encontrado');
+    }
+    
+    const pedido = pedidos[0];
+    
+    // Obtener detalles del pedido
+    const [detalles] = await pool.query(
+      `SELECT dp.*, p.nombre, p.descripcion
+       FROM detalles_pedido dp
+       JOIN productos p ON dp.producto_id = p.id
+       WHERE dp.pedido_id = ?`,
+      [pedido_id]
+    );
+    
+    // Crear PDF
+    const doc = new PDFDocument({ margin: 50 });
+    
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=ticket-${pedido_id}.pdf`);
+    
+    // Pipe el PDF directamente a la respuesta
+    doc.pipe(res);
+    
+    // Encabezado
+    doc.fontSize(24).text('TIENDA ANIME', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(18).text('Ticket de Compra', { align: 'center' });
+    doc.moveDown(1.5);
+    
+    // Información del pedido
+    doc.fontSize(12).text(`Pedido #${pedido.id}`);
+    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })}`);
+    doc.text(`Cliente: ${req.session.usuario.nombre}`);
+    doc.text(`Email: ${req.session.usuario.email}`);
+    doc.moveDown(1.5);
+    
+    // Línea separadora
+    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveDown();
+    
+    // Detalles de productos
+    doc.fontSize(14).text('Productos:', { underline: true });
+    doc.moveDown(0.5);
+    
+    detalles.forEach((detalle, index) => {
+      const precio = parseFloat(detalle.precio);
+      const cantidad = parseInt(detalle.cantidad);
+      const subtotal = precio * cantidad;
+      
+      doc.fontSize(11).text(`${index + 1}. ${detalle.nombre}`);
+      doc.fontSize(10).text(`   Cantidad: ${cantidad} x $${precio.toFixed(2)} = $${subtotal.toFixed(2)} MXN`);
+      doc.moveDown(0.5);
+    });
+    
+    doc.moveDown();
+    
+    // Línea separadora
+    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveDown();
+    
+    // Total
+    const total = parseFloat(pedido.total);
+    doc.fontSize(16).text(`TOTAL: $${total.toFixed(2)} MXN`, { align: 'right' });
+    doc.moveDown(2);
+    
+    // Pie de página
+    doc.fontSize(10).text('¡Gracias por tu compra!', { align: 'center' });
+    doc.text('Tienda Anime - Tu tienda de coleccionables favorita', { align: 'center' });
+    
+    // Finalizar el PDF
+    doc.end();
+  } catch (error) {
+    console.error('Error al generar PDF:', error);
+    res.status(500).send('Error al generar el ticket PDF');
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

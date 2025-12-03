@@ -640,6 +640,30 @@ body {
   font-size: 0.95rem;
 }
 
+.pedido-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-ticket {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+.btn-ticket:hover {
+  background-color: #1d4ed8;
+}
+
 /* Notificaciones */
 .notificacion {
   position: fixed;

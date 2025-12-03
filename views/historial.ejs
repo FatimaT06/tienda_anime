@@ -36,6 +36,12 @@
               <p><strong>Productos:</strong></p>
               <p><%= pedido.productos %></p>
             </div>
+            
+            <div class="pedido-footer">
+              <a href="/ticket/<%= pedido.id %>" class="btn btn-ticket">
+                📄 Ver Ticket
+              </a>
+            </div>
           </div>
         <% }); %>
       </div>
