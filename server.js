@@ -35,7 +35,7 @@ app.set('views', path.join(__dirname, 'views'));
 // Configuración de sesiones
 app.use(session({
   key: 'session_cookie',
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
